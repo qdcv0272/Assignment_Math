@@ -1,19 +1,20 @@
-import React from "react";
-import TokenEditor, { GrammarToken } from "../components/TokenEditor";
+import React from 'react';
+import TokenEditor from '../components/TokenEditor';
+import type { dragItem } from '../types/grammar';
 
-const grammarTokens: GrammarToken[] = [
-  { id: "sub-1", text: "변수," },
-  { id: "sub-2", text: "사과" },
-  { id: "sub-3", text: "=" },
-  { id: "sub-4", text: "10" },
-  { id: "sub-5", text: "변수," },
-  { id: "sub-6", text: "바구니" },
-  { id: "sub-7", text: "=" },
-  { id: "sub-8", text: "4" },
-  { id: "sub-9", text: "사과" },
-  { id: "sub-10", text: "-" },
-  { id: "sub-11", text: "바구니" },
-  { id: "sub-12", text: "보여주기" },
+const grammarTokens: dragItem[] = [
+  { id: 'sub-1', text: '변수,' },
+  { id: 'sub-2', text: '사과' },
+  { id: 'sub-3', text: '=' },
+  { id: 'sub-4', text: '10' },
+  { id: 'sub-5', text: '변수,' },
+  { id: 'sub-6', text: '바구니' },
+  { id: 'sub-7', text: '=' },
+  { id: 'sub-8', text: '4' },
+  { id: 'sub-9', text: '사과' },
+  { id: 'sub-10', text: '-' },
+  { id: 'sub-11', text: '바구니' },
+  { id: 'sub-12', text: '보여주기' },
 ];
 
 export default function SubtractPage() {
