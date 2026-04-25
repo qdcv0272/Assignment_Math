@@ -9,7 +9,6 @@ type Props = {
 };
 
 export default function NotFoundModal({ open = true, onClose, name = "민지", detail }: Props) {
-  // Esc 키로 모달 닫기 핸들러 등록
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -18,9 +17,8 @@ export default function NotFoundModal({ open = true, onClose, name = "민지", d
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  if (!open) return null; // 열려있지 않으면 아무것도 렌더링하지 않음
+  if (!open) return null;
 
-  // 상세 메시지가 없으면 기본 메시지를 사용
   const defaultMessage = `"${name}"라는 변수나 약속을 찾을 수 없어요.`;
   const display = detail ?? defaultMessage;
 

@@ -21,12 +21,8 @@ type DragEditorState = {
 };
 
 export const useDragEditorStore = create<DragEditorState>((set: any) => ({
-  // 코드 영역에 배치된 드래그 조각들
   codeDrags: [],
-
-  // 문법 패널에 표시되는 사용 가능한 드래그 조각들
   availableDrags: [],
-
   running: false,
   activeIndex: -1,
   output: "",
@@ -35,7 +31,6 @@ export const useDragEditorStore = create<DragEditorState>((set: any) => ({
 
   setAvailableDrags: (drags: dragItem[]) => set({ availableDrags: drags }),
 
-  // 코드 영역에 드래그 조각 추가 및 available에서 제거
   addDrag: (d: dragItem) =>
     set((state: DragEditorState) => ({
       codeDrags: [...state.codeDrags, d],

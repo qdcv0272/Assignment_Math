@@ -1,9 +1,12 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { YaksokSession } from "@dalbit-yaksok/core";
-import { Link } from "react-router-dom";
+import BottomActions from "./Editor/BottomActions";
 import type { dragItem } from "../types/dragType";
 import { useDragEditorStore } from "../stores/useDragEditorStore";
-import NotFoundModal from "./NotFoundModal";
+import useDraggableChips from "../hooks/useDraggableChips";
+import GrammarPanel from "./Editor/GrammarPanel";
+import CodeArea from "./Editor/CodeArea";
+import TopBanner from "./Editor/TopBanner";
 import "../css/DragEditor.css";
 
 type DragEditorProps = {
@@ -12,9 +15,8 @@ type DragEditorProps = {
   grammarTokens: dragItem[];
 };
 
-const sleep = (ms: number) => new Promise(res => setTimeout(res, ms)); // 실행 시 각 조각에 대한 하이라이트 효과를 위해 딜레이 함수 추가
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-// 드래그된 조각들을 기반으로 실행 가능한 소스 코드 문자열로 변환하는 함수
 function formatPreview(tokens: dragItem[]): string {
   if (tokens.length === 0) return "";
 
@@ -48,7 +50,6 @@ function formatPreview(tokens: dragItem[]): string {
   return lines.join("\n");
 }
 
-// 달빛약속 에러코드 제거 machineReadable.message 가 없음
 function stripError(input: string): string {
   console.log("원본 메시지:", input);
   return String(input)
@@ -60,7 +61,6 @@ function stripError(input: string): string {
 export default function DragEditor({ title, subtitle, grammarTokens }: DragEditorProps) {
   const {
     codeDrags,
-    addDrag,
     availableDrags,
     insertLineBreak,
     reset: resetStore,
@@ -77,36 +77,19 @@ export default function DragEditor({ title, subtitle, grammarTokens }: DragEdito
     setAvailableDrags,
   } = useDragEditorStore();
 
-  useEffect(() => {
-    console.log(error);
-  }, [error]);
+  const chipRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const codeAreaRef = useRef<HTMLDivElement>(null);
+
+  const setChipRef = (id: string) => (el: HTMLDivElement | null) => {
+    el ? chipRefs.current.set(id, el) : chipRefs.current.delete(id);
+  };
 
   useEffect(() => {
     setAvailableDrags(grammarTokens.filter(t => t.text !== "변수,"));
   }, [grammarTokens, setAvailableDrags]);
 
-  // 드래그 시작 시, 드래그되는 조각의 데이터를 JSON 문자열로 설정
-  const handleDragStart = (event: React.DragEvent<HTMLDivElement>, d: dragItem) => {
-    event.dataTransfer.setData("application/json", JSON.stringify(d));
-  };
-
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  };
-
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const raw = event.dataTransfer.getData("application/json");
-    if (!raw) return;
-    let d: dragItem | null = null;
-    try {
-      d = JSON.parse(raw) as dragItem;
-    } catch {
-      return;
-    }
-    if (!d) return;
-    addDrag(d);
-  };
+  useDraggableChips(availableDrags, chipRefs, codeAreaRef);
 
   const handleInsertLineBreak = () => {
     insertLineBreak();
@@ -114,7 +97,6 @@ export default function DragEditor({ title, subtitle, grammarTokens }: DragEdito
 
   const previewSource = useMemo(() => formatPreview(codeDrags), [codeDrags]);
 
-  // 실행 버튼 클릭 시, 현재 코드 조각들을 기반으로 소스를 생성하여 YaksokSession으로 실행
   const handleStart = async () => {
     storeSetError("");
     storeSetOutput("");
@@ -143,16 +125,14 @@ export default function DragEditor({ title, subtitle, grammarTokens }: DragEdito
         stderr: (message: string, machineReadable?: any) => {
           const raw = String(message ?? "");
           const human = stripError(raw);
-          // 출력 패널에는 ANSI 제거된 human 메시지를 보여줍니다.
+
           storeSetOutput(human);
 
-          // machineReadable.message이 있으면 그대로 모달에 표시
           if (machineReadable && typeof machineReadable === "object" && machineReadable.message) {
             storeSetError(String(machineReadable.message));
             return;
           }
 
-          // 없을 경우 마지막 비어있지 않은 줄을 모달에 표시
           const lines = human
             .split("\n")
             .map(l => l.replace("\r", "").trim())
@@ -184,113 +164,28 @@ export default function DragEditor({ title, subtitle, grammarTokens }: DragEdito
   return (
     <div className="page-shell">
       <div className="page-frame">
-        <header className="top-banner">
-          <div>
-            <span className="top-label">문제</span>
-            <h2>{title}</h2>
-          </div>
-        </header>
+        <TopBanner title={title} />
 
         <div className="page-body">
-          <main className="code-panel">
-            <div className="code-header">
-              <div>
-                <p className="editor-label">코드 작성 영역</p>
-                <p className="editor-subtitle">{subtitle}</p>
-              </div>
-            </div>
-            <div className="code-area" onDragOver={handleDragOver} onDrop={handleDrop}>
-              {codeDrags.length === 0 ? (
-                <div className="code-placeholder">여기에 조각을 조립하면 코드가 완성됩니다.</div>
-              ) : (
-                <div className="code-drag-row">
-                  {codeDrags.map((d: dragItem, index: number) => (
-                    <span
-                      key={`${d.id}-${index}`}
-                      className={`code-drag ${activeIndex === index ? "active" : ""}`}
-                    >
-                      {d.text}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {/* 실행 전 소스 미리보기 */}
-              {previewSource && (
-                <div className="preview-section">
-                  <p className="preview-label">생성된 소스(미리보기)</p>
-                  <div className="code-block preview-code-block">{previewSource}</div>
-                </div>
-              )}
-              {/* 실행 결과(미리보기 아래로 이동) */}
-              {(output || error) && (
-                <div className="output-section">
-                  {output && !error && (
-                    <div className="code-output">
-                      <div className="status-badge status-success">완료했습니다.</div>
-                      <div className="status-body">{output}</div>
-                    </div>
-                  )}
-                  {error && (
-                    <div className="code-error">
-                      <div className="status-badge status-error">실패했습니다.</div>
-                      <div className="status-body">{error}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </main>
-
-          {/* 에러 모달 */}
-          {error && (
-            <NotFoundModal
-              onClose={() => setErrorModalOpen(false)}
-              detail={error}
-              open={errorModalOpen}
-            />
-          )}
-          <aside className="grammar-panel page-grammar">
-            <div className="grammar-header">
-              <div>
-                <p className="grammar-label">달빛약속 문법</p>
-                <p className="grammar-info">문법 조각을 드래그하여 코드로 조립하세요.</p>
-              </div>
-            </div>
-            <div className="grammar-list grammar-chips">
-              {availableDrags.map((d: dragItem) => (
-                <div
-                  key={d.id}
-                  className="grammar-chip grammar-word"
-                  draggable
-                  onDragStart={event => handleDragStart(event, d)}
-                >
-                  {d.text}
-                </div>
-              ))}
-            </div>
-
-            <div className="grammar-footer">
-              <button
-                className="secondary-button grammar-break-button"
-                onClick={handleInsertLineBreak}
-              >
-                줄바꿈
-              </button>
-            </div>
-          </aside>
+          <CodeArea
+            subtitle={subtitle}
+            codeDrags={codeDrags}
+            activeIndex={activeIndex}
+            previewSource={previewSource}
+            output={output}
+            error={error}
+            errorModalOpen={errorModalOpen}
+            setErrorModalOpen={setErrorModalOpen}
+            codeAreaRef={codeAreaRef}
+          />
+          <GrammarPanel
+            availableDrags={availableDrags}
+            setChipRef={setChipRef}
+            onInsertLineBreak={handleInsertLineBreak}
+          />
         </div>
 
-        <div className="bottom-actions">
-          <button className="primary-button" onClick={handleStart} disabled={running}>
-            {running ? "실행 중..." : "시작"}
-          </button>
-          <button className="secondary-button" onClick={handleReset}>
-            초기화
-          </button>
-          <Link to="/" className="text-link">
-            홈으로 돌아가기
-          </Link>
-        </div>
+        <BottomActions onStart={handleStart} running={running} onReset={handleReset} />
       </div>
     </div>
   );

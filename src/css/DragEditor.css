@@ -52,7 +52,7 @@
   gap: 24px;
   align-items: start;
   flex: 1 1 auto;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .code-panel {
@@ -188,7 +188,7 @@
   border-radius: 26px;
   background: linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .grammar-header {
@@ -254,6 +254,7 @@
   white-space: nowrap;
   font-size: 15px;
   cursor: grab;
+  position: relative; /* GSAP z-index 적용을 위해 stacking context 생성 */
 }
 
 .grammar-chip:active {
