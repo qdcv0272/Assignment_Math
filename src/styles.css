@@ -1,8 +1,11 @@
 :root {
   --bg: #0f1724;
   --fg: #e6eef8;
-  --accent: #06b6d4;
-  --accent-2: #3b82f6;
+  /* 센스 있는 그라디언트: 보라 → 청록 */
+  --accent: #7c3aed; /* 보라(퍼플) */
+  --accent-2: #06b6d4; /* 청록(시안) */
+  --break-btn-bg: #ff7a59; /* 줄바꿈 버튼 배경 (오렌지) */
+  --break-btn-color: #ffffff; /* 줄바꿈 버튼 텍스트 색 */
   --muted: #cbd5e1;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
@@ -25,9 +28,9 @@ body {
 
 #root {
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  /* display: flex; */
+  /* align-items: center; */
+  /* justify-content: center; */
   padding: 0;
   overflow: hidden;
 }
@@ -354,6 +357,3 @@ body,
   width: 0;
   height: 0;
 }
-
-/* Modal styles moved to component-specific CSS (src/css/NotFoundModal.css)
-   to avoid duplication with component imports. */

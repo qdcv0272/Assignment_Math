@@ -11,7 +11,7 @@ export default function BottomActions({ onStart, running, onReset }: Props) {
   return (
     <div className="bottom-actions">
       <button className="primary-button" onClick={() => onStart()} disabled={running}>
-        {running ? "실행 중..." : "시작"}
+        {running ? "실행 중..." : "정답 확인"}
       </button>
       <button className="secondary-button" onClick={onReset}>
         초기화

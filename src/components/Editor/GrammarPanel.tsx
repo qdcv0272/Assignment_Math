@@ -25,7 +25,10 @@ export default function GrammarPanel({ availableDrags, setChipRef, onInsertLineB
       </div>
 
       <div className="grammar-footer">
-        <button className="secondary-button grammar-break-button" onClick={onInsertLineBreak}>
+        <button
+          className="secondary-button grammar-break-button break-button"
+          onClick={onInsertLineBreak}
+        >
           줄바꿈
         </button>
       </div>
