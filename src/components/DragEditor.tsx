@@ -9,10 +9,19 @@ import CodeArea from "./Editor/CodeArea";
 import TopBanner from "./Editor/TopBanner";
 import "../css/DragEditor.css";
 
+type ExpectedAnswer = {
+  varName?: string;
+  op?: "+" | "-" | "*" | "/";
+  left?: string;
+  right?: string;
+  commutative?: boolean;
+};
+
 type DragEditorProps = {
   title: string;
   subtitle: string;
   grammarTokens: dragItem[];
+  expectedAnswer?: ExpectedAnswer;
 };
 
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -61,12 +70,15 @@ function getPrintedInfo(source: string): {
   printedVar?: string;
   expected?: number;
   printed: boolean;
+  exprs: Record<string, { op?: string; left?: string; right?: string; raw?: string }>;
+  vars: Record<string, number>;
 } {
   const lines = String(source || "")
     .split(/\r?\n/)
     .map(l => l.trim())
     .filter(Boolean);
   const vars: Record<string, number> = {};
+  const exprs: Record<string, { op?: string; left?: string; right?: string; raw?: string }> = {};
   let printedVar: string | undefined;
 
   const toNumber = (token: string): number | undefined => {
@@ -88,6 +100,7 @@ function getPrintedInfo(source: string): {
       const a = toNumber(binMatch[2]);
       const op = binMatch[3];
       const b = toNumber(binMatch[4]);
+      exprs[name] = { op, left: binMatch[2], right: binMatch[4], raw: binMatch[0] };
       if (a === undefined || b === undefined) {
         vars[name] = NaN;
       } else {
@@ -118,13 +131,26 @@ function getPrintedInfo(source: string): {
       printedVar,
       expected: hasJungdab ? vars["정답"] : undefined,
       printed: true,
+      exprs,
+      vars,
     };
   }
 
-  return { hasJungdab, expected: hasJungdab ? vars["정답"] : undefined, printed: false };
+  return {
+    hasJungdab,
+    expected: hasJungdab ? vars["정답"] : undefined,
+    printed: false,
+    exprs,
+    vars,
+  };
 }
 
-export default function DragEditor({ title, subtitle, grammarTokens }: DragEditorProps) {
+export default function DragEditor({
+  title,
+  subtitle,
+  grammarTokens,
+  expectedAnswer,
+}: DragEditorProps) {
   const {
     codeDrags,
     availableDrags,
@@ -150,7 +176,6 @@ export default function DragEditor({ title, subtitle, grammarTokens }: DragEdito
   };
 
   useEffect(() => {
-    // 줄바꿈은 버튼으로 처리하므로 드래그 가능한 목록에서 제외합니다.
     setAvailableDrags(grammarTokens.filter(t => t.text !== "변수," && t.text !== "줄바꿈"));
   }, [grammarTokens, setAvailableDrags]);
 
@@ -161,9 +186,12 @@ export default function DragEditor({ title, subtitle, grammarTokens }: DragEdito
   };
 
   const previewSource = useMemo(() => formatPreview(codeDrags), [codeDrags]);
-  /**
-   * 실행 세션을 생성하고 실행합니다. 출력/에러는 전달된 setters로 처리됩니다.
-   */
+  const setsEqual = (a: Set<string>, b: Set<string>) => {
+    if (a.size !== b.size) return false;
+    for (const v of a) if (!b.has(v)) return false;
+    return true;
+  };
+
   const runSession = async (src: string) => {
     const session = new YaksokSession({
       stdout: (message: string) => {
@@ -227,7 +255,7 @@ export default function DragEditor({ title, subtitle, grammarTokens }: DragEdito
       const actual = parseFirstNumber(finalPrev);
 
       if (expectedInfo) {
-        const { hasJungdab, printedVar, expected, printed } = expectedInfo;
+        const { hasJungdab, printedVar, expected, printed, exprs } = expectedInfo;
 
         if (!hasJungdab) {
           storeSetError(`틀렸습니다. '정답' 변수에 숫자를 할당하세요.`);
@@ -249,6 +277,78 @@ export default function DragEditor({ title, subtitle, grammarTokens }: DragEdito
           return;
         }
 
+        // expectedAnswer가 주어지면 구조적 검사 실행
+        if (expectedAnswer) {
+          const va = expectedAnswer;
+          const varName = va.varName || "정답";
+          const expr = exprs[varName];
+
+          if (!expr || !expr.op) {
+            storeSetError(`틀렸습니다. '정답'에 이항 연산을 할당하세요.`);
+            return;
+          }
+
+          if (va.op && expr.op !== va.op) {
+            storeSetError(`틀렸습니다. 올바른 연산자(${va.op})를 사용하세요.`);
+            return;
+          }
+
+          const left = expr.left;
+          const right = expr.right;
+
+          const resolveTokenVal = (token?: string) => {
+            if (!token) return undefined;
+            if (/^[+-]?[0-9]+(?:\.[0-9]+)?$/.test(token)) return Number(token);
+
+            const maybe = expectedInfo.vars?.[token];
+            return typeof maybe === "number" && !Number.isNaN(maybe) ? maybe : undefined;
+          };
+
+          const expectedLeftVal = resolveTokenVal(va.left);
+          const expectedRightVal = resolveTokenVal(va.right);
+          const actualLeftVal = resolveTokenVal(left);
+          const actualRightVal = resolveTokenVal(right);
+
+          if (va.commutative || expr.op === "+" || expr.op === "*") {
+            if (
+              typeof expectedLeftVal === "number" &&
+              typeof expectedRightVal === "number" &&
+              typeof actualLeftVal === "number" &&
+              typeof actualRightVal === "number"
+            ) {
+              const s1 = new Set([String(expectedLeftVal), String(expectedRightVal)]);
+              const s2 = new Set([String(actualLeftVal), String(actualRightVal)]);
+              if (!setsEqual(s1, s2)) {
+                storeSetError(`틀렸습니다. 연산에 사용된 피연산자가 올바르지 않습니다.`);
+                return;
+              }
+            } else {
+              const setA = new Set([String(va.left), String(va.right)]);
+              const setB = new Set([String(left), String(right)]);
+              if (!setsEqual(setA, setB)) {
+                storeSetError(`틀렸습니다. 연산에 사용된 피연산자가 올바르지 않습니다.`);
+                return;
+              }
+            }
+          } else {
+            if (typeof expectedLeftVal === "number" && typeof actualLeftVal === "number") {
+              if (expectedLeftVal !== actualLeftVal) {
+                storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
+                return;
+              }
+              if (expectedRightVal !== actualRightVal) {
+                storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
+                return;
+              }
+            } else {
+              if (String(left) !== String(va.left) || String(right) !== String(va.right)) {
+                storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
+                return;
+              }
+            }
+          }
+        }
+
         if (Number(expected) !== Number(actual)) {
           storeSetError(`틀렸습니다. 출력: ${actual} · 정답: ${expected}`);
           return;
@@ -266,7 +366,6 @@ export default function DragEditor({ title, subtitle, grammarTokens }: DragEdito
           return;
         }
 
-        // 모든 검사를 통과하면 에러 클리어
         storeSetError("");
       }
 
@@ -282,7 +381,6 @@ export default function DragEditor({ title, subtitle, grammarTokens }: DragEdito
   };
 
   const handleReset = () => {
-    // 리셋 시에도 줄바꿈 토큰은 드래그 목록에 포함되지 않도록 필터링해서 전달
     resetStore(grammarTokens.filter(t => t.text !== "줄바꿈"));
   };
 

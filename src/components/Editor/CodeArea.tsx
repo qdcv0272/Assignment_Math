@@ -89,7 +89,7 @@ export default function CodeArea({
           <div className="output-section">
             {output && !error && (
               <div className="code-output">
-                <div className="status-body">{output}</div>
+                <div className="status-body">{`정답 : ${output}`}</div>
               </div>
             )}
             {error && (
@@ -100,8 +100,6 @@ export default function CodeArea({
           </div>
         )}
       </div>
-
-      {/* 모달 제거: 에러는 인라인으로 표시됩니다. */}
 
       <InstructionModal
         open={showInstruction}

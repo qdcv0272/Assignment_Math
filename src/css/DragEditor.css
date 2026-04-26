@@ -7,7 +7,7 @@
   display: flex;
   flex-direction: column;
   gap: 22px;
-  overflow: hidden; /* 내부에서 스크롤 컨테이너(.page-body)가 처리 */
+  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -18,13 +18,11 @@
   align-items: center;
   padding: 20px 24px;
   border-radius: 26px;
-  /* 단색 배경: 변수에 설정된 색을 사용합니다 */
+
   background: var(--accent);
   color: #fff;
   flex: 0 0 140px;
 }
-
-/* top-banner는 문서 흐름에 따라 배치됩니다 (상단 고정 필요 시 다시 sticky로 변경) */
 
 .top-label {
   display: inline-flex;
@@ -48,7 +46,7 @@
   gap: 24px;
   align-items: start;
   flex: 1 1 auto;
-  overflow: auto; /* 페이지 본문 자체에서 스크롤 발생 */
+  overflow: auto;
 }
 
 .code-panel {
@@ -92,17 +90,17 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow: visible; /* 페이지 레벨 스크롤 사용 */
+  overflow: visible;
   min-height: 0;
   position: relative;
 }
 
 .tokens-wrap {
   flex: 1 1 auto;
-  overflow: visible; /* 토큰 래퍼는 자체 스크롤하지 않음; page-body가 스크롤 처리 */
+  overflow: visible;
   -webkit-overflow-scrolling: touch;
-  padding-right: 6px; /* 여백으로 스크롤바 겹침 방지 */
-  min-height: 0; /* flex 항목이 컨테이너 안에서 축소되도록 허용 */
+  padding-right: 6px;
+  min-height: 0;
 }
 
 .help-button {
@@ -229,7 +227,7 @@
   padding: 28px;
   min-height: 520px;
   border-radius: 26px;
-  /* 단색 배경: 문법 패널은 보색 계열로 처리 */
+
   background: var(--accent-2);
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: visible;
@@ -322,7 +320,7 @@
   white-space: nowrap;
   font-size: 15px;
   cursor: grab;
-  position: relative; /* GSAP z-index 적용을 위해 stacking context 생성 */
+  position: relative;
 }
 
 .grammar-chip:active {
@@ -344,10 +342,9 @@
   align-items: center;
 }
 
-/* 스크롤바 보이도록 스타일링 (WebKit, Firefox) */
 .page-body {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent; /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
 }
 
 .page-body::-webkit-scrollbar {
@@ -362,7 +359,7 @@
 .page-body::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
-  border: 3px solid transparent; /* 여백을 주어 내용과 겹치지 않게 함 */
+  border: 3px solid transparent;
   background-clip: content-box;
 }
 
@@ -370,7 +367,6 @@
   background: rgba(255, 255, 255, 0.14);
 }
 
-/* 작은 화면/터치 환경에서 스크롤바가 가려질 수 있으니 오른쪽 패딩 보정 */
 .page-body {
   padding-right: 6px;
 }

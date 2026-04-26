@@ -49,6 +49,7 @@ export default function AddPage() {
         title="민지는 사과 18개가 있는데 친구에게 7개를 더 받았어요. 모두 몇 개일까요?"
         subtitle="달빛약속 토큰을 드래그해서 올바른 코드를 완성하세요."
         grammarTokens={grammarTokens}
+        expectedAnswer={{ op: "+", left: "민지", right: "친구", commutative: true }}
       />
     </>
   );

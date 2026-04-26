@@ -77,9 +77,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/add" element={<AddPage />} />
-        {/* <Route path="/subtract" element={<SubtractPage />} /> */}
-        {/* <Route path="/multiply" element={<MultiplyPage />} /> */}
-        {/* <Route path="/divide" element={<DividePage />} /> */}
+        <Route path="/subtract" element={<SubtractPage />} />
+        <Route path="/multiply" element={<MultiplyPage />} />
+        <Route path="/divide" element={<DividePage />} />
         <Route path="/:operation" element={<OperationPage />} />
       </Routes>
     </div>

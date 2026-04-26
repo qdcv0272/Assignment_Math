@@ -23,9 +23,7 @@ export default function NotFoundModal({ open = true, onClose, name = "민지", d
   const display = detail ?? defaultMessage;
 
   return (
-    /* 모달 배경을 클릭하면 닫힘 */
     <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
-      {/* 내부 클릭은 이벤트 전파를 막아 배경 클릭으로 인한 닫힘을 방지 */}
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3>찾을 수 없음</h3>
@@ -35,7 +33,6 @@ export default function NotFoundModal({ open = true, onClose, name = "민지", d
           <pre className="modal-message">{display}</pre>
         </div>
         <div className="modal-actions">
-          {/* 닫기 버튼은 onClose 호출 */}
           <button className="primary-button" onClick={onClose} type="button">
             닫기
           </button>
