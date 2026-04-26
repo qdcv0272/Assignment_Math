@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import DragEditor from "../components/DragEditor";
-import InstructionModal from "../components/InstructionModal";
+import InstructionModal from "../components/Modal";
 import type { dragItem } from "../types/dragType";
 
 const grammarTokens: dragItem[] = [
@@ -32,11 +32,7 @@ export default function DividePage() {
   }, []);
 
   const handleClose = () => {
-    try {
-      localStorage.setItem("divideInstructionShown", "1");
-    } catch (e) {
-      /* ignore */
-    }
+    localStorage.setItem("divideInstructionShown", "1");
     setShowInstruction(false);
   };
 
@@ -48,7 +44,7 @@ export default function DividePage() {
         title="연필 20자루를 4명에게 똑같이 나눠주려고 해요. 한 사람당 몇 자루씩 받을까요?"
         subtitle="달빛약속 토큰을 드래그해서 나눗셈 코드를 완성하세요."
         grammarTokens={grammarTokens}
-        expectedAnswer={{ op: "/", left: "연필", right: "사람", commutative: false }}
+        expectedAnswer={{ op: "/", left: "연필", right: "사람", commutative: false, answer: 5 }}
       />
     </>
   );

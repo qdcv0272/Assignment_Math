@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import type { dragItem } from "../../types/dragType";
-import InstructionModal from "../InstructionModal";
+import InstructionModal from "../Modal";
 import { useDragEditorStore } from "../../stores/useDragEditorStore";
 
-type Props = {
+type CodeAreaProps = {
   subtitle: string;
   codeDrags: dragItem[];
   activeIndex: number;
@@ -21,12 +21,11 @@ export default function CodeArea({
   previewSource,
   output,
   error,
-
   codeAreaRef,
-  title,
-}: Props) {
+}: CodeAreaProps) {
   const [showInstruction, setShowInstruction] = useState(false);
-  const removeAtIndex = useDragEditorStore(state => state.removeDragAtIndex);
+
+  const { removeDragAtIndex } = useDragEditorStore();
   return (
     <main className="code-panel">
       <div className="code-area" ref={codeAreaRef}>
@@ -54,22 +53,20 @@ export default function CodeArea({
                   <span
                     role="button"
                     tabIndex={0}
-                    onClick={() => removeAtIndex(index)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter" || e.key === " ") removeAtIndex(index);
-                    }}
+                    onClick={() => removeDragAtIndex(index)}
                     key={`token-${d.id}-${index}`}
                     className={`code-drag ${activeIndex === index ? "active" : ""}`}
                   >
                     {d.text}
                   </span>
                 );
-
+                // console.log(`@@ ${d.text} @@`);
                 if (d.text === "줄바꿈") {
                   return [
                     token,
                     <span key={`br-${d.id}-${index}`} className="code-line-break d-none" />,
                   ];
+                  // 프래그먼트로 대신 해서 배열로함
                 }
 
                 return token;

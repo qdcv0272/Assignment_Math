@@ -1,13 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
-type Props = {
+type BottomActionsProps = {
   onStart: () => Promise<void> | void;
   running: boolean;
   onReset: () => void;
 };
 
-export default function BottomActions({ onStart, running, onReset }: Props) {
+export default function BottomActions({ onStart, running, onReset }: BottomActionsProps) {
   return (
     <div className="bottom-actions">
       <button className="primary-button" onClick={() => onStart()} disabled={running}>

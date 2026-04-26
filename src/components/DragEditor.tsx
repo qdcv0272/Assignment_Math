@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { YaksokSession } from "@dalbit-yaksok/core";
 import BottomActions from "./Editor/BottomActions";
 import type { dragItem } from "../types/dragType";
+import type { ExpectedAnswer, DragEditorProps } from "../types/dragEditor";
 import { useDragEditorStore } from "../stores/useDragEditorStore";
 import useDraggableChips from "../hooks/useDraggableChips";
 import GrammarPanel from "./Editor/GrammarPanel";
@@ -9,30 +10,15 @@ import CodeArea from "./Editor/CodeArea";
 import TopBanner from "./Editor/TopBanner";
 import "../css/DragEditor.css";
 
-type ExpectedAnswer = {
-  varName?: string;
-  op?: "+" | "-" | "*" | "/";
-  left?: string;
-  right?: string;
-  commutative?: boolean;
-};
-
-type DragEditorProps = {
-  title: string;
-  subtitle: string;
-  grammarTokens: dragItem[];
-  expectedAnswer?: ExpectedAnswer;
-};
-
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
+// 코드 드래그 조각들을 코드 형태로 포맷팅
 function formatPreview(tokens: dragItem[]): string {
   if (tokens.length === 0) return "";
 
   const lines: string[] = [];
   let cur = "";
-  let indentLevel = 0;
-  const getIndent = () => "  ".repeat(indentLevel);
+  const getIndent = () => " "; // 줄바꿈 표시용
 
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i].text;
@@ -43,26 +29,12 @@ function formatPreview(tokens: dragItem[]): string {
       continue;
     }
 
-    if (t === "보여주기") {
-      cur = (cur + (cur.trim() ? " " : "") + "보여주기").trim();
-      lines.push(cur);
-      cur = getIndent();
-      continue;
-    }
-
     cur += (cur.trim() ? " " : "") + t;
   }
 
   if (cur.trim()) lines.push(cur.trim());
 
   return lines.join("\n");
-}
-
-function stripError(input: string): string {
-  return String(input)
-    .replace(/\u001b\[[0-9;]*m/g, "")
-    .replace(/\x1b\[[0-9;]*m/g, "")
-    .trim();
 }
 
 function getPrintedInfo(source: string): {
@@ -77,6 +49,7 @@ function getPrintedInfo(source: string): {
     .split(/\r?\n/)
     .map(l => l.trim())
     .filter(Boolean);
+
   const vars: Record<string, number> = {};
   const exprs: Record<string, { op?: string; left?: string; right?: string; raw?: string }> = {};
   let printedVar: string | undefined;
@@ -153,79 +126,214 @@ export default function DragEditor({
 }: DragEditorProps) {
   const {
     codeDrags,
-    availableDrags,
-    insertLineBreak,
+    drags,
     reset: resetStore,
     running,
     activeIndex,
     output,
     error,
-    setOutput: storeSetOutput,
     setError: storeSetError,
     setRunning: storeSetRunning,
     setActiveIndex: storeSetActiveIndex,
-    setAvailableDrags,
+    setDrags,
+    setOutput: storeSetOutput,
+    setAnswerCheck: storeSetAnswerCheck,
   } = useDragEditorStore();
 
-  const chipRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const chipRefs = useRef<Map<string, HTMLDivElement>>(new Map()); // ref를 저장할 Map
 
-  const codeAreaRef = useRef<HTMLDivElement>(null);
+  const codeAreaRef = useRef<HTMLDivElement>(null); // 코드 영역 ref
 
   const setChipRef = (id: string) => (el: HTMLDivElement | null) => {
     el ? chipRefs.current.set(id, el) : chipRefs.current.delete(id);
   };
 
   useEffect(() => {
-    setAvailableDrags(grammarTokens.filter(t => t.text !== "변수," && t.text !== "줄바꿈"));
-  }, [grammarTokens, setAvailableDrags]);
+    setDrags(grammarTokens.filter(t => t.text !== "줄바꿈"));
+  }, [grammarTokens, setDrags]);
 
-  useDraggableChips(availableDrags, chipRefs, codeAreaRef);
-
-  const handleInsertLineBreak = () => {
-    insertLineBreak();
-  };
+  useDraggableChips(drags, chipRefs, codeAreaRef);
 
   const previewSource = useMemo(() => formatPreview(codeDrags), [codeDrags]);
+
   const setsEqual = (a: Set<string>, b: Set<string>) => {
     if (a.size !== b.size) return false;
     for (const v of a) if (!b.has(v)) return false;
     return true;
   };
 
-  const runSession = async (src: string) => {
+  const runSession = async (src: string): Promise<string> => {
+    let lastMessage = "";
+
     const session = new YaksokSession({
       stdout: (message: string) => {
-        const m = stripError(String(message ?? ""));
-        storeSetOutput(m);
+        const s = String(message ?? "");
+        lastMessage = s;
+        storeSetOutput(s);
+        console.warn(`성공@@@@: ${message}`);
       },
-      stderr: (message: string, machineReadable?: any) => {
-        const raw = String(message ?? "");
-        const human = stripError(raw);
 
-        storeSetOutput(human);
+      stderr: (message: string, machineReadable?: any) => {
+        console.warn(`오류@@@@: ${message}`);
 
         if (machineReadable && typeof machineReadable === "object" && machineReadable.message) {
           storeSetError(String(machineReadable.message));
+          console.log(`머신 리더블 오류 메시지:`, machineReadable);
           return;
         }
-
-        const lines = human
-          .split("\n")
-          .map(l => l.replace("\r", "").trim())
-          .filter(Boolean);
-        const last = lines.length ? lines[lines.length - 1] : human || "오류가 발생했습니다";
-        storeSetError(last);
       },
     });
 
     session.addModule("main", src);
     await session.runModule("main");
+
+    return lastMessage;
   };
 
   const parseFirstNumber = (s?: string) => {
     if (!s) return undefined;
     const m = String(s).match(/[-+]?[0-9]+(?:\.[0-9]+)?/);
     return m ? (m[0].includes(".") ? parseFloat(m[0]) : parseInt(m[0], 10)) : undefined;
+  };
+
+  // animate 활성 인덱스
+  const animateActiveProgress = async () => {
+    for (let i = 0; i < codeDrags.length; i++) {
+      storeSetActiveIndex(i);
+      await sleep(10);
+    }
+    storeSetActiveIndex(-1);
+  };
+
+  const warnIfRemainingTokens = (): boolean => {
+    const remaining = useDragEditorStore.getState().drags || [];
+    if (remaining.length > 0) {
+      const warnMsg = `경고 : 문법 조각을 전부 사용해주세요.`;
+      window.alert(warnMsg);
+      storeSetError(warnMsg);
+      return true;
+    }
+    storeSetError("");
+    return false;
+  };
+
+  const handleExpectedAnswerOut = (finalPrev: string): boolean => {
+    if (!(expectedAnswer && expectedAnswer.answer !== undefined)) return false;
+    const expectedStr = String(expectedAnswer.answer);
+    const outStr = String(finalPrev ?? "").trim();
+    if (outStr === expectedStr) {
+      storeSetAnswerCheck(true);
+      warnIfRemainingTokens();
+      return true;
+    }
+    storeSetAnswerCheck(false);
+    storeSetError(`틀렸습니다. 출력: ${outStr}`);
+    return true;
+  };
+
+  const evaluatePrintedInfo = (source: string, finalPrev: string): boolean => {
+    const expectedInfo = getPrintedInfo(source);
+    const { hasJungdab, printedVar, expected, printed, exprs } = expectedInfo;
+    const actual = parseFirstNumber(finalPrev);
+
+    if (!hasJungdab) {
+      storeSetError(`틀렸습니다. '정답' 변수에 숫자를 할당하세요.`);
+      return false;
+    }
+
+    if (!printed) {
+      storeSetError(`틀렸습니다. '정답'을 보여주기 하세요.`);
+      return false;
+    }
+
+    if (printedVar !== "정답") {
+      storeSetError(`틀렸습니다. 반드시 '정답'을 보여주어야 합니다.`);
+      return false;
+    }
+
+    if (actual === undefined) {
+      storeSetError(`틀렸습니다. 정답을 출력하지 않았습니다.`);
+      return false;
+    }
+
+    if (expectedAnswer) {
+      const va = expectedAnswer;
+      const varName = va.varName || "정답";
+      const expr = exprs[varName];
+
+      if (!expr || !expr.op) {
+        storeSetError(`틀렸습니다. '정답'에 이항 연산을 할당하세요.`);
+        return false;
+      }
+
+      if (va.op && expr.op !== va.op) {
+        storeSetError(`틀렸습니다. 올바른 연산자(${va.op})를 사용하세요.`);
+        return false;
+      }
+
+      const left = expr.left;
+      const right = expr.right;
+
+      const resolveTokenVal = (token?: string) => {
+        if (!token) return undefined;
+        if (/^[+-]?[0-9]+(?:\.[0-9]+)?$/.test(token)) return Number(token);
+        const maybe = expectedInfo.vars?.[token];
+        return typeof maybe === "number" && !Number.isNaN(maybe) ? maybe : undefined;
+      };
+
+      const expectedLeftVal = resolveTokenVal(va.left);
+      const expectedRightVal = resolveTokenVal(va.right);
+      const actualLeftVal = resolveTokenVal(left);
+      const actualRightVal = resolveTokenVal(right);
+
+      if (va.commutative || expr.op === "+" || expr.op === "*") {
+        if (
+          // 실제로 모두 숫자일 때만 순서 상관 없는지 검사
+          typeof expectedLeftVal === "number" &&
+          typeof expectedRightVal === "number" &&
+          typeof actualLeftVal === "number" &&
+          typeof actualRightVal === "number"
+        ) {
+          // expected와 actual의 피연산자 집합이 같은지 검사
+          const s1 = new Set([String(expectedLeftVal), String(expectedRightVal)]);
+          const s2 = new Set([String(actualLeftVal), String(actualRightVal)]);
+          if (!setsEqual(s1, s2)) {
+            storeSetError(`틀렸습니다. 연산에 사용된 피연산자가 올바르지 않습니다.`);
+            return false;
+          }
+        } else {
+          const setA = new Set([String(va.left), String(va.right)]);
+          const setB = new Set([String(left), String(right)]);
+          if (!setsEqual(setA, setB)) {
+            storeSetError(`틀렸습니다. 연산에 사용된 피연산자가 올바르지 않습니다.`);
+            return false;
+          }
+        }
+      } else {
+        if (typeof expectedLeftVal === "number" && typeof actualLeftVal === "number") {
+          if (expectedLeftVal !== actualLeftVal) {
+            storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
+            return false;
+          }
+          if (expectedRightVal !== actualRightVal) {
+            storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
+            return false;
+          }
+        } else {
+          if (String(left) !== String(va.left) || String(right) !== String(va.right)) {
+            storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
+            return false;
+          }
+        }
+      }
+    }
+
+    if (Number(expected) !== Number(actual)) {
+      storeSetError(`틀렸습니다. 출력: ${actual} · 정답: ${expected}`);
+      return false;
+    }
+
+    return true;
   };
 
   const handleStart = async () => {
@@ -239,144 +347,37 @@ export default function DragEditor({
 
     storeSetRunning(true);
 
+    if (!useDragEditorStore.getState().setRunning) return;
+
     try {
-      for (let i = 0; i < codeDrags.length; i++) {
-        storeSetActiveIndex(i);
-        await sleep(300);
-      }
-      storeSetActiveIndex(-1);
+      await animateActiveProgress();
 
       const source = previewSource;
+      const finalPrev = await runSession(source);
 
-      await runSession(source);
-
-      const finalPrev = useDragEditorStore.getState().output;
-      const expectedInfo = getPrintedInfo(source);
-      const actual = parseFirstNumber(finalPrev);
-
-      if (expectedInfo) {
-        const { hasJungdab, printedVar, expected, printed, exprs } = expectedInfo;
-
-        if (!hasJungdab) {
-          storeSetError(`틀렸습니다. '정답' 변수에 숫자를 할당하세요.`);
-          return;
-        }
-
-        if (!printed) {
-          storeSetError(`틀렸습니다. '정답'을 보여주기 하세요.`);
-          return;
-        }
-
-        if (printedVar !== "정답") {
-          storeSetError(`틀렸습니다. 반드시 '정답'을 보여주어야 합니다.`);
-          return;
-        }
-
-        if (actual === undefined) {
-          storeSetError(`틀렸습니다. 정답을 출력하지 않았습니다.`);
-          return;
-        }
-
-        // expectedAnswer가 주어지면 구조적 검사 실행
-        if (expectedAnswer) {
-          const va = expectedAnswer;
-          const varName = va.varName || "정답";
-          const expr = exprs[varName];
-
-          if (!expr || !expr.op) {
-            storeSetError(`틀렸습니다. '정답'에 이항 연산을 할당하세요.`);
-            return;
-          }
-
-          if (va.op && expr.op !== va.op) {
-            storeSetError(`틀렸습니다. 올바른 연산자(${va.op})를 사용하세요.`);
-            return;
-          }
-
-          const left = expr.left;
-          const right = expr.right;
-
-          const resolveTokenVal = (token?: string) => {
-            if (!token) return undefined;
-            if (/^[+-]?[0-9]+(?:\.[0-9]+)?$/.test(token)) return Number(token);
-
-            const maybe = expectedInfo.vars?.[token];
-            return typeof maybe === "number" && !Number.isNaN(maybe) ? maybe : undefined;
-          };
-
-          const expectedLeftVal = resolveTokenVal(va.left);
-          const expectedRightVal = resolveTokenVal(va.right);
-          const actualLeftVal = resolveTokenVal(left);
-          const actualRightVal = resolveTokenVal(right);
-
-          if (va.commutative || expr.op === "+" || expr.op === "*") {
-            if (
-              typeof expectedLeftVal === "number" &&
-              typeof expectedRightVal === "number" &&
-              typeof actualLeftVal === "number" &&
-              typeof actualRightVal === "number"
-            ) {
-              const s1 = new Set([String(expectedLeftVal), String(expectedRightVal)]);
-              const s2 = new Set([String(actualLeftVal), String(actualRightVal)]);
-              if (!setsEqual(s1, s2)) {
-                storeSetError(`틀렸습니다. 연산에 사용된 피연산자가 올바르지 않습니다.`);
-                return;
-              }
-            } else {
-              const setA = new Set([String(va.left), String(va.right)]);
-              const setB = new Set([String(left), String(right)]);
-              if (!setsEqual(setA, setB)) {
-                storeSetError(`틀렸습니다. 연산에 사용된 피연산자가 올바르지 않습니다.`);
-                return;
-              }
-            }
-          } else {
-            if (typeof expectedLeftVal === "number" && typeof actualLeftVal === "number") {
-              if (expectedLeftVal !== actualLeftVal) {
-                storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
-                return;
-              }
-              if (expectedRightVal !== actualRightVal) {
-                storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
-                return;
-              }
-            } else {
-              if (String(left) !== String(va.left) || String(right) !== String(va.right)) {
-                storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
-                return;
-              }
-            }
-          }
-        }
-
-        if (Number(expected) !== Number(actual)) {
-          storeSetError(`틀렸습니다. 출력: ${actual} · 정답: ${expected}`);
-          return;
-        }
-
-        const remaining = useDragEditorStore.getState().availableDrags || [];
-        if (remaining.length > 0) {
-          const msg = `모든 문법 조각을 다 써야 정답입니다`;
-          try {
-            window.alert(msg);
-          } catch (e) {
-            /* ignore */
-          }
-          storeSetError(msg);
-          return;
-        }
-
-        storeSetError("");
+      // expectedAnswer 우선 처리
+      if (handleExpectedAnswerOut(finalPrev)) {
+        return;
       }
 
-      if (!useDragEditorStore.getState().output) storeSetOutput("실행 완료");
+      // printed-based 검증
+      if (!evaluatePrintedInfo(source, finalPrev)) {
+        return;
+      }
+
+      // 남은 토큰 경고(있어도 성공)
+      warnIfRemainingTokens();
+
+      storeSetAnswerCheck(true);
+      storeSetError("");
     } catch (e: any) {
+      console.warn(`실행 중 오류@@@@:`, e);
       const msg = e?.message || String(e);
       storeSetError(msg);
-      storeSetOutput("[생성된 소스]\n" + previewSource);
     } finally {
       storeSetRunning(false);
       storeSetActiveIndex(-1);
+      console.log("[생성된 소스]\n" + previewSource);
     }
   };
 
@@ -400,9 +401,9 @@ export default function DragEditor({
           codeAreaRef={codeAreaRef}
         />
         <GrammarPanel
-          availableDrags={availableDrags}
+          drags={drags}
           setChipRef={setChipRef}
-          onInsertLineBreak={handleInsertLineBreak}
+          onLineBreak={useDragEditorStore.getState().lineBreak}
         />
         <BottomActions onStart={handleStart} running={running} onReset={handleReset} />
       </div>

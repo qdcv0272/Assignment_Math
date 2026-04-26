@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import DragEditor from "../components/DragEditor";
-import InstructionModal from "../components/InstructionModal";
+import InstructionModal from "../components/Modal";
 import type { dragItem } from "../types/dragType";
 
 const grammarTokens: dragItem[] = [
@@ -32,11 +32,7 @@ export default function MultiplyPage() {
   }, []);
 
   const handleClose = () => {
-    try {
-      localStorage.setItem("multiplyInstructionShown", "1");
-    } catch (e) {
-      /* ignore */
-    }
+    localStorage.setItem("multiplyInstructionShown", "1");
     setShowInstruction(false);
   };
 
@@ -48,7 +44,7 @@ export default function MultiplyPage() {
         title="의자가 한 줄에 8개씩 놓여 있어요. 이런 줄이 3줄 있어요. 의자는 모두 몇 개일까요?"
         subtitle="달빛약속 토큰을 드래그해서 곱셈 코드를 완성하세요."
         grammarTokens={grammarTokens}
-        expectedAnswer={{ op: "*", left: "한줄", right: "줄", commutative: true }}
+        expectedAnswer={{ op: "*", left: "한줄", right: "줄", commutative: true, answer: 24 }}
       />
     </>
   );

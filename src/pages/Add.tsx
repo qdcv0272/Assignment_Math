@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import DragEditor from "../components/DragEditor";
-import InstructionModal from "../components/InstructionModal";
+import InstructionModal from "../components/Modal";
 import type { dragItem } from "../types/dragType";
 
 const grammarTokens: dragItem[] = [
@@ -17,6 +17,7 @@ const grammarTokens: dragItem[] = [
   { id: "add-11", text: "정답" },
   { id: "add-12", text: "정답" },
   { id: "add-13", text: "=" },
+  // { id: "add-14", text: "10" }, 정오답 판정 테스트용
 ];
 
 export default function AddPage() {
@@ -33,11 +34,7 @@ export default function AddPage() {
   }, []);
 
   const handleClose = () => {
-    try {
-      localStorage.setItem("addInstructionShown", "1");
-    } catch (e) {
-      /* ignore */
-    }
+    localStorage.setItem("addInstructionShown", "1");
     setShowInstruction(false);
   };
 
@@ -49,7 +46,7 @@ export default function AddPage() {
         title="민지는 사과 18개가 있는데 친구에게 7개를 더 받았어요. 모두 몇 개일까요?"
         subtitle="달빛약속 토큰을 드래그해서 올바른 코드를 완성하세요."
         grammarTokens={grammarTokens}
-        expectedAnswer={{ op: "+", left: "민지", right: "친구", commutative: true }}
+        expectedAnswer={{ op: "+", left: "민지", right: "친구", commutative: true, answer: 25 }}
       />
     </>
   );

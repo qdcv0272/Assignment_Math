@@ -1,11 +1,11 @@
 import React from "react";
 
-type Props = {
+type TopBannerProps = {
   title: string;
   label?: string;
 };
 
-export default function TopBanner({ title, label = "문제" }: Props) {
+export default function TopBanner({ title, label = "문제" }: TopBannerProps) {
   return (
     <header className="top-banner">
       <div>

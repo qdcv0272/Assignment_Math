@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import DragEditor from "../components/DragEditor";
-import InstructionModal from "../components/InstructionModal";
+import InstructionModal from "../components/Modal";
 import type { dragItem } from "../types/dragType";
 
 const grammarTokens: dragItem[] = [
@@ -32,11 +32,7 @@ export default function SubtractPage() {
   }, []);
 
   const handleClose = () => {
-    try {
-      localStorage.setItem("subtractInstructionShown", "1");
-    } catch (e) {
-      /* ignore */
-    }
+    localStorage.setItem("subtractInstructionShown", "1");
     setShowInstruction(false);
   };
 
@@ -48,7 +44,7 @@ export default function SubtractPage() {
         title="책이 18권 있었는데 9권을 친구에게 빌려줬어요. 남은 책은 몇 권일까요?"
         subtitle="달빛약속 토큰을 드래그해서 뺄셈 코드를 완성하세요."
         grammarTokens={grammarTokens}
-        expectedAnswer={{ op: "-", left: "책", right: "빌려준", commutative: false }}
+        expectedAnswer={{ op: "-", left: "책", right: "빌려준", commutative: false, answer: 9 }}
       />
     </>
   );

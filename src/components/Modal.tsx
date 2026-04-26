@@ -1,12 +1,12 @@
 import React, { useEffect } from "react";
-import "../css/NotFoundModal.css";
+import "../css/Modal.css";
 
-type Props = {
+type InstructionModalProps = {
   open?: boolean;
   onClose: () => void;
 };
 
-export default function InstructionModal({ open = true, onClose }: Props) {
+export default function InstructionModal({ open = true, onClose }: InstructionModalProps) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();

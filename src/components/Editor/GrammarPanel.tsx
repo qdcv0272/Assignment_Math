@@ -2,13 +2,13 @@ import React from "react";
 import type { dragItem } from "../../types/dragType";
 import GrammarChip from "./GrammarChip";
 
-type Props = {
-  availableDrags: dragItem[];
+type GrammarPanelProps = {
+  drags: dragItem[];
   setChipRef: (id: string) => (el: HTMLDivElement | null) => void;
-  onInsertLineBreak: () => void;
+  onLineBreak: () => void;
 };
 
-export default function GrammarPanel({ availableDrags, setChipRef, onInsertLineBreak }: Props) {
+export default function GrammarPanel({ drags, setChipRef, onLineBreak }: GrammarPanelProps) {
   return (
     <aside className="grammar-panel page-grammar">
       <div className="grammar-header">
@@ -19,7 +19,7 @@ export default function GrammarPanel({ availableDrags, setChipRef, onInsertLineB
       </div>
 
       <div className="grammar-list grammar-chips">
-        {availableDrags.map(d => (
+        {drags.map(d => (
           <GrammarChip key={d.id} item={d} setRef={setChipRef(d.id)} />
         ))}
       </div>
@@ -27,7 +27,7 @@ export default function GrammarPanel({ availableDrags, setChipRef, onInsertLineB
       <div className="grammar-footer">
         <button
           className="secondary-button grammar-break-button break-button"
-          onClick={onInsertLineBreak}
+          onClick={onLineBreak}
         >
           줄바꿈
         </button>
