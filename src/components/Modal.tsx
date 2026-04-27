@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import "../css/Modal.css";
 
 type InstructionModalProps = {
@@ -7,14 +7,6 @@ type InstructionModalProps = {
 };
 
 export default function InstructionModal({ open = true, onClose }: InstructionModalProps) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   if (!open) return null;
 
   return (

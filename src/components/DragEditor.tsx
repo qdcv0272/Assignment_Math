@@ -12,7 +12,7 @@ import "../css/DragEditor.css";
 
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-// 코드 드래그 조각들을 코드 형태로 포맷팅
+/** 코드 드래그 조각들을 코드 형태로 포맷팅 */
 function formatPreview(tokens: dragItem[]): string {
   if (tokens.length === 0) return "";
 
@@ -35,87 +35,6 @@ function formatPreview(tokens: dragItem[]): string {
   if (cur.trim()) lines.push(cur.trim());
 
   return lines.join("\n");
-}
-
-function getPrintedInfo(source: string): {
-  hasJungdab: boolean;
-  printedVar?: string;
-  expected?: number;
-  printed: boolean;
-  exprs: Record<string, { op?: string; left?: string; right?: string; raw?: string }>;
-  vars: Record<string, number>;
-} {
-  const lines = String(source || "")
-    .split(/\r?\n/)
-    .map(l => l.trim())
-    .filter(Boolean);
-
-  const vars: Record<string, number> = {};
-  const exprs: Record<string, { op?: string; left?: string; right?: string; raw?: string }> = {};
-  let printedVar: string | undefined;
-
-  const toNumber = (token: string): number | undefined => {
-    if (/^[+-]?\d+$/.test(token)) return parseInt(token, 10);
-    if (/^[+-]?\d+\.\d+$/.test(token)) return parseFloat(token);
-    return vars[token];
-  };
-
-  for (const line of lines) {
-    const showMatch = line.match(/^([^\s]+)\s+(?:보여주기|출력하기|출력)$/);
-    if (showMatch) {
-      printedVar = showMatch[1];
-      continue;
-    }
-
-    const binMatch = line.match(/^([^\s=]+)\s*=\s*([^\s]+)\s*([+\-*/])\s*([^\s]+)$/);
-    if (binMatch) {
-      const name = binMatch[1];
-      const a = toNumber(binMatch[2]);
-      const op = binMatch[3];
-      const b = toNumber(binMatch[4]);
-      exprs[name] = { op, left: binMatch[2], right: binMatch[4], raw: binMatch[0] };
-      if (a === undefined || b === undefined) {
-        vars[name] = NaN;
-      } else {
-        let v = NaN;
-        if (op === "+") v = a + b;
-        else if (op === "-") v = a - b;
-        else if (op === "*") v = a * b;
-        else if (op === "/") v = b !== 0 ? a / b : NaN;
-        vars[name] = v;
-      }
-      continue;
-    }
-
-    const assignMatch = line.match(/^([^\s=]+)\s*=\s*([^\s]+)$/);
-    if (assignMatch) {
-      const name = assignMatch[1];
-      const val = toNumber(assignMatch[2]);
-      vars[name] = val === undefined ? NaN : val;
-      continue;
-    }
-  }
-
-  const hasJungdab = typeof vars["정답"] === "number" && !Number.isNaN(vars["정답"]);
-
-  if (printedVar) {
-    return {
-      hasJungdab,
-      printedVar,
-      expected: hasJungdab ? vars["정답"] : undefined,
-      printed: true,
-      exprs,
-      vars,
-    };
-  }
-
-  return {
-    hasJungdab,
-    expected: hasJungdab ? vars["정답"] : undefined,
-    printed: false,
-    exprs,
-    vars,
-  };
 }
 
 export default function DragEditor({
@@ -150,18 +69,17 @@ export default function DragEditor({
 
   useEffect(() => {
     setDrags(grammarTokens.filter(t => t.text !== "줄바꿈"));
-  }, [grammarTokens, setDrags]);
+    return () => {
+      // 다른 페이지로 이동하거나 컴포넌트가 언마운트될 때 상태 초기화
+      resetStore(grammarTokens.filter(t => t.text !== "줄바꿈"));
+    };
+  }, [grammarTokens, setDrags, resetStore]);
 
   useDraggableChips(drags, chipRefs, codeAreaRef);
 
   const previewSource = useMemo(() => formatPreview(codeDrags), [codeDrags]);
 
-  const setsEqual = (a: Set<string>, b: Set<string>) => {
-    if (a.size !== b.size) return false;
-    for (const v of a) if (!b.has(v)) return false;
-    return true;
-  };
-
+  /** Yaksok 세션을 실행하고 출력 결과를 반환 */
   const runSession = async (src: string): Promise<string> => {
     let lastMessage = "";
 
@@ -174,6 +92,7 @@ export default function DragEditor({
       },
 
       stderr: (message: string, machineReadable?: any) => {
+        // 보여주기 했을때 오류 메시지
         console.warn(`오류@@@@: ${message}`);
 
         if (machineReadable && typeof machineReadable === "object" && machineReadable.message) {
@@ -190,13 +109,7 @@ export default function DragEditor({
     return lastMessage;
   };
 
-  const parseFirstNumber = (s?: string) => {
-    if (!s) return undefined;
-    const m = String(s).match(/[-+]?[0-9]+(?:\.[0-9]+)?/);
-    return m ? (m[0].includes(".") ? parseFloat(m[0]) : parseInt(m[0], 10)) : undefined;
-  };
-
-  // animate 활성 인덱스
+  /** animate 활성 인덱스 */
   const animateActiveProgress = async () => {
     for (let i = 0; i < codeDrags.length; i++) {
       storeSetActiveIndex(i);
@@ -205,10 +118,11 @@ export default function DragEditor({
     storeSetActiveIndex(-1);
   };
 
+  /** 토큰 남고 정답인 경우 경고 */
   const warnIfRemainingTokens = (): boolean => {
     const remaining = useDragEditorStore.getState().drags || [];
     if (remaining.length > 0) {
-      const warnMsg = `경고 : 문법 조각을 전부 사용해주세요.`;
+      const warnMsg = `경고 : 문법 조각을 전부 사용해주세요. 찝찝`;
       window.alert(warnMsg);
       storeSetError(warnMsg);
       return true;
@@ -217,125 +131,41 @@ export default function DragEditor({
     return false;
   };
 
+  /** 정오답 처리 */
   const handleExpectedAnswerOut = (finalPrev: string): boolean => {
     if (!(expectedAnswer && expectedAnswer.answer !== undefined)) return false;
     const expectedStr = String(expectedAnswer.answer);
     const outStr = String(finalPrev ?? "").trim();
+
+    const existingError = useDragEditorStore.getState().error;
+    if (existingError) {
+      // 달빛약속 에러 있으면
+      storeSetAnswerCheck(false);
+      return true;
+    }
+
+    // '보여주기' 토큰이 코드에 없으면 정답 체크를 위한 코드가 잘못된 것으로 간주
+    const hasShowToken =
+      previewSource.includes("보여주기") || codeDrags.some(d => d.text === "보여주기");
+    if (!hasShowToken) {
+      storeSetAnswerCheck(false);
+      storeSetError("정답 체크 하기위한 코드작성이 틀렸습니다.");
+      return true;
+    }
+
     if (outStr === expectedStr) {
+      // 정답인 경우
       storeSetAnswerCheck(true);
       warnIfRemainingTokens();
       return true;
     }
+
     storeSetAnswerCheck(false);
     storeSetError(`틀렸습니다. 출력: ${outStr}`);
     return true;
   };
 
-  const evaluatePrintedInfo = (source: string, finalPrev: string): boolean => {
-    const expectedInfo = getPrintedInfo(source);
-    const { hasJungdab, printedVar, expected, printed, exprs } = expectedInfo;
-    const actual = parseFirstNumber(finalPrev);
-
-    if (!hasJungdab) {
-      storeSetError(`틀렸습니다. '정답' 변수에 숫자를 할당하세요.`);
-      return false;
-    }
-
-    if (!printed) {
-      storeSetError(`틀렸습니다. '정답'을 보여주기 하세요.`);
-      return false;
-    }
-
-    if (printedVar !== "정답") {
-      storeSetError(`틀렸습니다. 반드시 '정답'을 보여주어야 합니다.`);
-      return false;
-    }
-
-    if (actual === undefined) {
-      storeSetError(`틀렸습니다. 정답을 출력하지 않았습니다.`);
-      return false;
-    }
-
-    if (expectedAnswer) {
-      const va = expectedAnswer;
-      const varName = va.varName || "정답";
-      const expr = exprs[varName];
-
-      if (!expr || !expr.op) {
-        storeSetError(`틀렸습니다. '정답'에 이항 연산을 할당하세요.`);
-        return false;
-      }
-
-      if (va.op && expr.op !== va.op) {
-        storeSetError(`틀렸습니다. 올바른 연산자(${va.op})를 사용하세요.`);
-        return false;
-      }
-
-      const left = expr.left;
-      const right = expr.right;
-
-      const resolveTokenVal = (token?: string) => {
-        if (!token) return undefined;
-        if (/^[+-]?[0-9]+(?:\.[0-9]+)?$/.test(token)) return Number(token);
-        const maybe = expectedInfo.vars?.[token];
-        return typeof maybe === "number" && !Number.isNaN(maybe) ? maybe : undefined;
-      };
-
-      const expectedLeftVal = resolveTokenVal(va.left);
-      const expectedRightVal = resolveTokenVal(va.right);
-      const actualLeftVal = resolveTokenVal(left);
-      const actualRightVal = resolveTokenVal(right);
-
-      if (va.commutative || expr.op === "+" || expr.op === "*") {
-        if (
-          // 실제로 모두 숫자일 때만 순서 상관 없는지 검사
-          typeof expectedLeftVal === "number" &&
-          typeof expectedRightVal === "number" &&
-          typeof actualLeftVal === "number" &&
-          typeof actualRightVal === "number"
-        ) {
-          // expected와 actual의 피연산자 집합이 같은지 검사
-          const s1 = new Set([String(expectedLeftVal), String(expectedRightVal)]);
-          const s2 = new Set([String(actualLeftVal), String(actualRightVal)]);
-          if (!setsEqual(s1, s2)) {
-            storeSetError(`틀렸습니다. 연산에 사용된 피연산자가 올바르지 않습니다.`);
-            return false;
-          }
-        } else {
-          const setA = new Set([String(va.left), String(va.right)]);
-          const setB = new Set([String(left), String(right)]);
-          if (!setsEqual(setA, setB)) {
-            storeSetError(`틀렸습니다. 연산에 사용된 피연산자가 올바르지 않습니다.`);
-            return false;
-          }
-        }
-      } else {
-        if (typeof expectedLeftVal === "number" && typeof actualLeftVal === "number") {
-          if (expectedLeftVal !== actualLeftVal) {
-            storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
-            return false;
-          }
-          if (expectedRightVal !== actualRightVal) {
-            storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
-            return false;
-          }
-        } else {
-          if (String(left) !== String(va.left) || String(right) !== String(va.right)) {
-            storeSetError(`틀렸습니다. 피연산자의 순서를 확인하세요.`);
-            return false;
-          }
-        }
-      }
-    }
-
-    if (Number(expected) !== Number(actual)) {
-      storeSetError(`틀렸습니다. 출력: ${actual} · 정답: ${expected}`);
-      return false;
-    }
-
-    return true;
-  };
-
+  /** 세션 시작 */
   const handleStart = async () => {
     storeSetError("");
     storeSetOutput("");
@@ -360,11 +190,6 @@ export default function DragEditor({
         return;
       }
 
-      // printed-based 검증
-      if (!evaluatePrintedInfo(source, finalPrev)) {
-        return;
-      }
-
       // 남은 토큰 경고(있어도 성공)
       warnIfRemainingTokens();
 
@@ -381,6 +206,7 @@ export default function DragEditor({
     }
   };
 
+  /** 초기화 */
   const handleReset = () => {
     resetStore(grammarTokens.filter(t => t.text !== "줄바꿈"));
   };
@@ -403,7 +229,7 @@ export default function DragEditor({
         <GrammarPanel
           drags={drags}
           setChipRef={setChipRef}
-          onLineBreak={useDragEditorStore.getState().lineBreak}
+          onLineBreak={useDragEditorStore.getState().lineBreak} // 랜더링 최적화 위해 store에서 직접 가져오기
         />
         <BottomActions onStart={handleStart} running={running} onReset={handleReset} />
       </div>

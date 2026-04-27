@@ -41,7 +41,7 @@ export default function SubtractPage() {
       <InstructionModal open={showInstruction} onClose={handleClose} />
 
       <DragEditor
-        title="책이 18권 있었는데 9권을 친구에게 빌려줬어요. 남은 책은 몇 권일까요?"
+        title="책이 18권 있었는데 9권을 친구에게 빌려줬어요. 남은 책은 몇 권일까요? 정답을 보여주세요!"
         subtitle="달빛약속 토큰을 드래그해서 뺄셈 코드를 완성하세요."
         grammarTokens={grammarTokens}
         expectedAnswer={{ op: "-", left: "책", right: "빌려준", commutative: false, answer: 9 }}

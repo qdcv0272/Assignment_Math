@@ -41,7 +41,7 @@ export default function DividePage() {
       <InstructionModal open={showInstruction} onClose={handleClose} />
 
       <DragEditor
-        title="연필 20자루를 4명에게 똑같이 나눠주려고 해요. 한 사람당 몇 자루씩 받을까요?"
+        title="연필 20자루를 4명에게 똑같이 나눠주려고 해요. 한 사람당 몇 자루씩 받을까요? 정답을 보여주세요!"
         subtitle="달빛약속 토큰을 드래그해서 나눗셈 코드를 완성하세요."
         grammarTokens={grammarTokens}
         expectedAnswer={{ op: "/", left: "연필", right: "사람", commutative: false, answer: 5 }}

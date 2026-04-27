@@ -41,7 +41,7 @@ export default function MultiplyPage() {
       <InstructionModal open={showInstruction} onClose={handleClose} />
 
       <DragEditor
-        title="의자가 한 줄에 8개씩 놓여 있어요. 이런 줄이 3줄 있어요. 의자는 모두 몇 개일까요?"
+        title="의자가 한 줄에 8개씩 놓여 있어요. 이런 줄이 3줄 있어요. 의자는 모두 몇 개일까요? 정답을 보여주세요!"
         subtitle="달빛약속 토큰을 드래그해서 곱셈 코드를 완성하세요."
         grammarTokens={grammarTokens}
         expectedAnswer={{ op: "*", left: "한줄", right: "줄", commutative: true, answer: 24 }}

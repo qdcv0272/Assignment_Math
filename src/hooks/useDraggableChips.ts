@@ -8,6 +8,7 @@ gsap.registerPlugin(Draggable);
 
 type ChipRefs = React.MutableRefObject<Map<string, HTMLDivElement | null>>;
 
+/** 드래그 가능한 칩을 관리하는 커스텀 훅 */
 export default function useDraggableChips(
   drags: dragItem[],
   chipRefs: ChipRefs, // 드래그 아이템들의 ref를 저장하는 Map
