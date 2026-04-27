@@ -113,7 +113,7 @@ export default function DragEditor({
   const animateActiveProgress = async () => {
     for (let i = 0; i < codeDrags.length; i++) {
       storeSetActiveIndex(i);
-      await sleep(10);
+      await sleep(600);
     }
     storeSetActiveIndex(-1);
   };
